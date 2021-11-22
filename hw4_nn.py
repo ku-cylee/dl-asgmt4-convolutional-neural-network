@@ -35,10 +35,30 @@ class nn_convolutional_layer:
     # Q1. Complete this method
     #######
     def forward(self, x):
-        print(self.W.shape)
-        print(self.b.shape)
-        print(x.shape)
-        return out
+        # W: (f, cin, wf, hf)
+        # b: (1, f, 1, 1)
+        # x: (b, cin, win, hin)
+        # y: (b, f, wout, hout)
+
+        b, cin, win, hin = x.shape
+        f, _, wf, hf = self.W.shape
+
+        wout = win - wf + 1
+        hout = hin - hf + 1
+        y = np.zeros((b, f, wout, hout))
+
+        for x_idx, each_x in enumerate(x):
+            # (f, cin * wf * hf)
+            reshaped_W = self.W.reshape(f, -1)
+            # (wout, hout, cin * wf * hf)
+            windows = view_as_windows(each_x, (cin, win, hin)).reshape(wout, hout, -1) 
+            for filter_idx in range(f):
+                for width_idx in range(wout):
+                    for height_idx in range(hout):
+                        score = reshaped_W[filter_idx].T @ windows[width_idx][height_idx]
+                        y[x_idx][filter_idx][width_idx][height_idx] = score
+
+        return y + self.b
 
     #######
     # Q2. Complete this method
