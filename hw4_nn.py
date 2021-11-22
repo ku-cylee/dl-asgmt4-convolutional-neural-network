@@ -35,6 +35,9 @@ class nn_convolutional_layer:
     # Q1. Complete this method
     #######
     def forward(self, x):
+        print(self.W.shape)
+        print(self.b.shape)
+        print(x.shape)
         return out
 
     #######
