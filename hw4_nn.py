@@ -66,6 +66,24 @@ class nn_convolutional_layer:
     # Q2. Complete this method
     #######
     def backprop(self, x, dLdy):
+        f, ch, wfil, hfil = self.W.shape
+        b, _, wout, hout = dLdy.shape
+
+        # dLdx: (b, ch, win = wout + wfil - 1, hin = hout + hfil - 1)
+        dLdx = np.zeros_like(x)
+        for b_idx in range(b):
+            for f_idx in range(f):
+                each_dLdy = dLdy[b_idx][f_idx]  # (wout, hout)
+                each_W = self.W[f_idx]          # (ch, wfil, hfil)
+                for wout_idx in range(wout):
+                    for hout_idx in range(hout):
+                        dLdy_value = each_dLdy[wout_idx][hout_idx]
+                        for ch_idx in range(ch):
+                            for wfil_idx in range(wfil):
+                                for hfil_idx in range(hfil):
+                                    W_value = each_W[ch_idx][wfil_idx][hfil_idx]
+                                    dLdx[b_idx][ch_idx][wout_idx + wfil_idx][hout_idx + hfil_idx] += dLdy_value * W_value
+
         return dLdx, dLdW, dLdb
 
     #######
