@@ -84,6 +84,9 @@ class nn_convolutional_layer:
                                     W_value = each_W[ch_idx][wfil_idx][hfil_idx]
                                     dLdx[b_idx][ch_idx][wout_idx + wfil_idx][hout_idx + hfil_idx] += dLdy_value * W_value
 
+        # dLdb: (1, f, 1, 1)
+        dLdb = dLdy.sum(axis=3).sum(axis=2).sum(axis=0).reshape(self.b.shape)
+
         return dLdx, dLdW, dLdb
 
     #######
