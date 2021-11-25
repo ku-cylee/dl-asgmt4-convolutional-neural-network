@@ -84,6 +84,19 @@ class nn_convolutional_layer:
                                     W_value = each_W[ch_idx][wfil_idx][hfil_idx]
                                     dLdx[b_idx][ch_idx][wout_idx + wfil_idx][hout_idx + hfil_idx] += dLdy_value * W_value
 
+        # dLdW: (f, ch, wfil, hfil)
+        dLdW = np.zeros_like(self.W)
+        for f_idx in range(f):
+            for ch_idx in range(ch):
+                for b_idx in range(b):
+                    for wout_idx in range(wout):
+                        for hout_idx in range(hout):
+                            dLdy_value = dLdy[b_idx][f_idx][wout_idx][hout_idx]
+                            for wfil_idx in range(wfil):
+                                for hfil_idx in range(hfil):
+                                    x_value = x[b_idx][ch_idx][wout_idx + wfil_idx][hout_idx + hfil_idx]
+                                    dLdW[f_idx][ch_idx][wfil_idx][hfil_idx] += dLdy_value * x_value
+
         # dLdb: (1, f, 1, 1)
         dLdb = dLdy.sum(axis=3).sum(axis=2).sum(axis=0).reshape(self.b.shape)
 
