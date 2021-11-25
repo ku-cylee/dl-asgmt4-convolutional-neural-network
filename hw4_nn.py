@@ -70,30 +70,20 @@ class nn_convolutional_layer:
         b, _, wout, hout = dLdy.shape
 
         # dLdx: (b, ch, win = wout + wfil - 1, hin = hout + hfil - 1)
+        # dLdW: (f, ch, wfil, hfil)
         dLdx = np.zeros_like(x)
+        dLdW = np.zeros_like(self.W)
         for b_idx in range(b):
             for f_idx in range(f):
-                each_dLdy = dLdy[b_idx][f_idx]  # (wout, hout)
-                each_W = self.W[f_idx]          # (ch, wfil, hfil)
                 for wout_idx in range(wout):
                     for hout_idx in range(hout):
-                        dLdy_value = each_dLdy[wout_idx][hout_idx]
+                        dLdy_value = dLdy[b_idx][f_idx][wout_idx][hout_idx]
                         for ch_idx in range(ch):
                             for wfil_idx in range(wfil):
                                 for hfil_idx in range(hfil):
-                                    W_value = each_W[ch_idx][wfil_idx][hfil_idx]
+                                    W_value = self.W[f_idx][ch_idx][wfil_idx][hfil_idx]
                                     dLdx[b_idx][ch_idx][wout_idx + wfil_idx][hout_idx + hfil_idx] += dLdy_value * W_value
 
-        # dLdW: (f, ch, wfil, hfil)
-        dLdW = np.zeros_like(self.W)
-        for f_idx in range(f):
-            for ch_idx in range(ch):
-                for b_idx in range(b):
-                    for wout_idx in range(wout):
-                        for hout_idx in range(hout):
-                            dLdy_value = dLdy[b_idx][f_idx][wout_idx][hout_idx]
-                            for wfil_idx in range(wfil):
-                                for hfil_idx in range(hfil):
                                     x_value = x[b_idx][ch_idx][wout_idx + wfil_idx][hout_idx + hfil_idx]
                                     dLdW[f_idx][ch_idx][wfil_idx][hfil_idx] += dLdy_value * x_value
 
