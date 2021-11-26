@@ -112,12 +112,32 @@ class nn_max_pooling_layer:
         windows = view_as_windows(x,
                                   (1, 1, self.pool_size, self.pool_size),
                                   step=(1, 1, self.stride, self.stride))
-        return np.max(windows, axis=(4,5,6,7))
+        return np.max(windows, axis=(4, 5, 6, 7))
 
     #######
     # Q4. Complete this method
     #######
     def backprop(self, x, dLdy):
+        windows = view_as_windows(x,
+                                  (1, 1, self.pool_size, self.pool_size),
+                                  step=(1, 1, self.stride, self.stride))
+        windowed_x = np.squeeze(windows, axis=(4, 5))
+        b, ch, wout, hout, _, _ = windowed_x.shape
+
+        dLdx = np.zeros_like(x, dtype=np.float64)
+        for b_idx in range(b):
+            for ch_idx in range(ch):
+                for wout_idx in range(wout):
+                    for hout_idx in range(hout):
+                        window = windowed_x[b_idx, ch_idx, wout_idx, hout_idx]
+                        max_value = np.max(window)
+                        dLdy_value = dLdy[b_idx, ch_idx, wout_idx, hout_idx]
+                        dLdx_submatrix = np.where(window == max_value, dLdy_value, 0)
+
+                        win_idx = wout_idx * self.stride
+                        hin_idx = hout_idx * self.stride
+                        dLdx[b_idx, ch_idx, win_idx:win_idx + self.pool_size, hin_idx:hin_idx + self.pool_size] += dLdx_submatrix
+
         return dLdx
 
     #######
