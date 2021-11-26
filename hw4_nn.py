@@ -109,7 +109,10 @@ class nn_max_pooling_layer:
     # Q3. Complete this method
     #######
     def forward(self, x):
-        return out
+        windows = view_as_windows(x,
+                                  (1, 1, self.pool_size, self.pool_size),
+                                  step=(1, 1, self.stride, self.stride))
+        return np.max(windows, axis=(4,5,6,7))
 
     #######
     # Q4. Complete this method
