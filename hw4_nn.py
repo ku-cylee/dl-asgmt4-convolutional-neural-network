@@ -57,8 +57,8 @@ class nn_convolutional_layer:
                 for wout_idx in range(wout):
                     for hout_idx in range(hout):
                         weight_vec = reshaped_W[f_idx]
-                        x_vec = windows[wout_idx][hout_idx]
-                        y[b_idx][f_idx][wout_idx][hout_idx] = weight_vec.T @ x_vec
+                        x_vec = windows[wout_idx, hout_idx]
+                        y[b_idx, f_idx, wout_idx, hout_idx] = weight_vec.T @ x_vec
 
         return y + self.b
 
@@ -77,15 +77,18 @@ class nn_convolutional_layer:
             for f_idx in range(f):
                 for wout_idx in range(wout):
                     for hout_idx in range(hout):
-                        dLdy_value = dLdy[b_idx][f_idx][wout_idx][hout_idx]
+                        dLdy_value = dLdy[b_idx, f_idx, wout_idx, hout_idx]
                         for ch_idx in range(ch):
                             for wfil_idx in range(wfil):
+                                win_idx = wout_idx + wfil_idx
                                 for hfil_idx in range(hfil):
-                                    W_value = self.W[f_idx][ch_idx][wfil_idx][hfil_idx]
-                                    dLdx[b_idx][ch_idx][wout_idx + wfil_idx][hout_idx + hfil_idx] += dLdy_value * W_value
+                                    hin_idx = hout_idx + hfil_idx
 
-                                    x_value = x[b_idx][ch_idx][wout_idx + wfil_idx][hout_idx + hfil_idx]
-                                    dLdW[f_idx][ch_idx][wfil_idx][hfil_idx] += dLdy_value * x_value
+                                    W_value = self.W[f_idx, ch_idx, wfil_idx, hfil_idx]
+                                    dLdx[b_idx, ch_idx, win_idx, hin_idx] += dLdy_value * W_value
+
+                                    x_value = x[b_idx, ch_idx, win_idx, hin_idx]
+                                    dLdW[f_idx, ch_idx, wfil_idx, hfil_idx] += dLdy_value * x_value
 
         # dLdb: (1, f, 1, 1)
         dLdb = dLdy.sum(axis=3).sum(axis=2).sum(axis=0).reshape(self.b.shape)
