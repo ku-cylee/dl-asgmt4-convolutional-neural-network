@@ -46,19 +46,17 @@ class nn_convolutional_layer:
         wout = win - wfil + 1
         hout = hin - hfil + 1
 
-        y = np.zeros((b, f, wout, hout))
+        reshaped_W = self.W.reshape(f, -1)
+        windows = view_as_windows(x, (1, ch, wfil, hfil)).reshape(f, wout, hout, -1)
 
+        y = np.zeros((b, f, wout, hout))
         for b_idx in range(b):
-            # (f, cin * wf * hf)
-            reshaped_W = self.W.reshape(f, -1)
-            # (wout, hout, cin * wf * hf)
-            windows = view_as_windows(x[b_idx], (ch, wfil, hfil)).reshape(wout, hout, -1) 
             for f_idx in range(f):
+                weight_vec = reshaped_W[f_idx].T
                 for wout_idx in range(wout):
                     for hout_idx in range(hout):
-                        weight_vec = reshaped_W[f_idx]
-                        x_vec = windows[wout_idx, hout_idx]
-                        y[b_idx, f_idx, wout_idx, hout_idx] = weight_vec.T @ x_vec
+                        x_vec = windows[b_idx, wout_idx, hout_idx]
+                        y[b_idx, f_idx, wout_idx, hout_idx] = weight_vec @ x_vec
 
         return y + self.b
 
@@ -69,26 +67,23 @@ class nn_convolutional_layer:
         f, ch, wfil, hfil = self.W.shape
         b, _, wout, hout = dLdy.shape
 
+        x_windows = np.squeeze(view_as_windows(x, (1, ch, wfil, hfil)), axis=(1, 4))
+
         # dLdx: (b, ch, win = wout + wfil - 1, hin = hout + hfil - 1)
         # dLdW: (f, ch, wfil, hfil)
         dLdx = np.zeros_like(x)
         dLdW = np.zeros_like(self.W)
-        for b_idx in range(b):
-            for f_idx in range(f):
+        for f_idx in range(f):
+            filterwise_W = self.W[f_idx]
+            for b_idx in range(b):
                 for wout_idx in range(wout):
                     for hout_idx in range(hout):
                         dLdy_value = dLdy[b_idx, f_idx, wout_idx, hout_idx]
-                        for ch_idx in range(ch):
-                            for wfil_idx in range(wfil):
-                                win_idx = wout_idx + wfil_idx
-                                for hfil_idx in range(hfil):
-                                    hin_idx = hout_idx + hfil_idx
 
-                                    W_value = self.W[f_idx, ch_idx, wfil_idx, hfil_idx]
-                                    dLdx[b_idx, ch_idx, win_idx, hin_idx] += dLdy_value * W_value
+                        dLdx[b_idx, :, wout_idx:wout_idx+wfil, hout_idx:hout_idx+hfil] += dLdy_value * filterwise_W
 
-                                    x_value = x[b_idx, ch_idx, win_idx, hin_idx]
-                                    dLdW[f_idx, ch_idx, wfil_idx, hfil_idx] += dLdy_value * x_value
+                        x_window = x_windows[b_idx, wout_idx, hout_idx]
+                        dLdW[f_idx] += dLdy_value * x_window
 
         # dLdb: (1, f, 1, 1)
         dLdb = dLdy.sum(axis=3).sum(axis=2).sum(axis=0).reshape(self.b.shape)
