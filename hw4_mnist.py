@@ -26,6 +26,6 @@ for i in range(num_plot):
   ######
   ## Q5. Complete the below function ax.set_title
   #####
-  ax.set_title()
+  ax.set_title(str(y_train[sample_index[i]]))
 
 plt.show()
