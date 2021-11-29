@@ -35,28 +35,28 @@ class nn_convolutional_layer:
     # Q1. Complete this method
     #######
     def forward(self, x):
-        # W: (f, ch, wf, hf)
-        # b: (1, f, 1, 1)
-        # x: (b, ch, win, hin)
-        # y: (b, f, wout, hout)
+        # W: (cout, cin, wfil, hfil)
+        # b: (1, cout, 1, 1)
+        # x: (b, cin, win, hin)
+        # y: (b, cout, wout, hout)
 
-        b, ch, win, hin = x.shape
-        f, _, wfil, hfil = self.W.shape
+        b, cin, win, hin = x.shape
+        cout, _, wfil, hfil = self.W.shape
 
         wout = win - wfil + 1
         hout = hin - hfil + 1
 
-        reshaped_W = self.W.reshape(f, -1)
-        windows = view_as_windows(x, (1, ch, wfil, hfil)).reshape(f, wout, hout, -1)
+        reshaped_W = self.W.reshape(cout, -1)
+        windows = view_as_windows(x, (1, cin, wfil, hfil)).reshape(cout, wout, hout, -1)
 
-        y = np.zeros((b, f, wout, hout))
+        y = np.zeros((b, cout, wout, hout))
         for b_idx in range(b):
-            for f_idx in range(f):
-                weight_vec = reshaped_W[f_idx].T
+            for cout_idx in range(cout):
+                weight_vec = reshaped_W[cout_idx].T
                 for wout_idx in range(wout):
                     for hout_idx in range(hout):
                         x_vec = windows[b_idx, wout_idx, hout_idx]
-                        y[b_idx, f_idx, wout_idx, hout_idx] = weight_vec @ x_vec
+                        y[b_idx, cout_idx, wout_idx, hout_idx] = weight_vec @ x_vec
 
         return y + self.b
 
@@ -64,28 +64,28 @@ class nn_convolutional_layer:
     # Q2. Complete this method
     #######
     def backprop(self, x, dLdy):
-        f, ch, wfil, hfil = self.W.shape
+        cout, cin, wfil, hfil = self.W.shape
         b, _, wout, hout = dLdy.shape
 
-        x_windows = np.squeeze(view_as_windows(x, (1, ch, wfil, hfil)), axis=(1, 4))
+        x_windows = np.squeeze(view_as_windows(x, (1, cin, wfil, hfil)), axis=(1, 4))
 
-        # dLdx: (b, ch, win = wout + wfil - 1, hin = hout + hfil - 1)
-        # dLdW: (f, ch, wfil, hfil)
+        # dLdx: (b, cin, win = wout + wfil - 1, hin = hout + hfil - 1)
+        # dLdW: (f, cin, wfil, hfil)
         dLdx = np.zeros_like(x)
         dLdW = np.zeros_like(self.W)
-        for f_idx in range(f):
-            filterwise_W = self.W[f_idx]
+        for cout_idx in range(cout):
+            filterwise_W = self.W[cout_idx]
             for b_idx in range(b):
                 for wout_idx in range(wout):
                     for hout_idx in range(hout):
-                        dLdy_value = dLdy[b_idx, f_idx, wout_idx, hout_idx]
+                        dLdy_value = dLdy[b_idx, cout_idx, wout_idx, hout_idx]
 
-                        dLdx[b_idx, :, wout_idx:wout_idx+wfil, hout_idx:hout_idx+hfil] += dLdy_value * filterwise_W
+                        dLdx[b_idx, :, wout_idx:wout_idx + wfil, hout_idx:hout_idx + hfil] += dLdy_value * filterwise_W
 
                         x_window = x_windows[b_idx, wout_idx, hout_idx]
-                        dLdW[f_idx] += dLdy_value * x_window
+                        dLdW[cout_idx] += dLdy_value * x_window
 
-        # dLdb: (1, f, 1, 1)
+        # dLdb: (1, cout, 1, 1)
         dLdb = dLdy.sum(axis=3).sum(axis=2).sum(axis=0).reshape(self.b.shape)
 
         return dLdx, dLdW, dLdb
@@ -120,21 +120,21 @@ class nn_max_pooling_layer:
                                   (1, 1, self.pool_size, self.pool_size),
                                   step=(1, 1, self.stride, self.stride))
         windowed_x = np.squeeze(windows, axis=(4, 5))
-        b, ch, wout, hout, _, _ = windowed_x.shape
+        b, cin, wout, hout, _, _ = windowed_x.shape
 
         dLdx = np.zeros_like(x, dtype=np.float64)
         for b_idx in range(b):
-            for ch_idx in range(ch):
+            for cin_idx in range(cin):
                 for wout_idx in range(wout):
                     for hout_idx in range(hout):
-                        window = windowed_x[b_idx, ch_idx, wout_idx, hout_idx]
+                        window = windowed_x[b_idx, cin_idx, wout_idx, hout_idx]
                         max_value = np.max(window)
-                        dLdy_value = dLdy[b_idx, ch_idx, wout_idx, hout_idx]
+                        dLdy_value = dLdy[b_idx, cin_idx, wout_idx, hout_idx]
                         dLdx_submatrix = np.where(window == max_value, dLdy_value, 0)
 
                         win_idx = wout_idx * self.stride
                         hin_idx = hout_idx * self.stride
-                        dLdx[b_idx, ch_idx, win_idx:win_idx + self.pool_size, hin_idx:hin_idx + self.pool_size] += dLdx_submatrix
+                        dLdx[b_idx, cin_idx, win_idx:win_idx + self.pool_size, hin_idx:hin_idx + self.pool_size] += dLdx_submatrix
 
         return dLdx
 
