@@ -40,23 +40,18 @@ class nn_convolutional_layer:
         # x: (b, cin, win, hin)
         # y: (b, cout, wout, hout)
 
-        b, cin, win, hin = x.shape
+        b, cin, _, _ = x.shape
         cout, _, wfil, hfil = self.W.shape
 
-        wout = win - wfil + 1
-        hout = hin - hfil + 1
+        reshaped_W = self.W.reshape(cout, 1, -1)
 
-        reshaped_W = self.W.reshape(cout, -1)
-        windows = view_as_windows(x, (1, cin, wfil, hfil)).reshape(cout, wout, hout, -1)
+        windows = np.squeeze(view_as_windows(x, (1, cin, wfil, hfil)), axis=(1, 4))
+        _, wout, hout, _, _, _ = windows.shape
+        reshaped_windows = windows.reshape(b, wout, hout, -1, 1)
 
         y = np.zeros((b, cout, wout, hout))
         for b_idx in range(b):
-            for cout_idx in range(cout):
-                weight_vec = reshaped_W[cout_idx].T
-                for wout_idx in range(wout):
-                    for hout_idx in range(hout):
-                        x_vec = windows[b_idx, wout_idx, hout_idx]
-                        y[b_idx, cout_idx, wout_idx, hout_idx] = weight_vec @ x_vec
+            y[b_idx] = np.squeeze(reshaped_W.dot(reshaped_windows[b_idx]), axis=(1, 4))
 
         return y + self.b
 
