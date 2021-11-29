@@ -62,12 +62,15 @@ class nn_convolutional_layer:
         cout, cin, wfil, hfil = self.W.shape
         b, _, wout, hout = dLdy.shape
 
-        x_windows = np.squeeze(view_as_windows(x, (1, cin, wfil, hfil)), axis=(1, 4))
+        # dLdW: (cout, cin, wfil, hfil)
+        x_windows = np.squeeze(view_as_windows(x, (1, 1, wfil, hfil)), axis=(4, 5)) \
+                      .transpose(1, 4, 5, 0, 2, 3) \
+                      .reshape((cin, wfil, hfil, -1, 1))
+        dLdy_flattened = np.swapaxes(dLdy, 0, 1).reshape(cout, 1, -1)
+        dLdW = np.squeeze(dLdy_flattened.dot(x_windows), axis=(1, -1))
 
         # dLdx: (b, cin, win = wout + wfil - 1, hin = hout + hfil - 1)
-        # dLdW: (f, cin, wfil, hfil)
         dLdx = np.zeros_like(x)
-        dLdW = np.zeros_like(self.W)
         for cout_idx in range(cout):
             filterwise_W = self.W[cout_idx]
             for b_idx in range(b):
@@ -76,9 +79,6 @@ class nn_convolutional_layer:
                         dLdy_value = dLdy[b_idx, cout_idx, wout_idx, hout_idx]
 
                         dLdx[b_idx, :, wout_idx:wout_idx + wfil, hout_idx:hout_idx + hfil] += dLdy_value * filterwise_W
-
-                        x_window = x_windows[b_idx, wout_idx, hout_idx]
-                        dLdW[cout_idx] += dLdy_value * x_window
 
         # dLdb: (1, cout, 1, 1)
         dLdb = dLdy.sum(axis=3).sum(axis=2).sum(axis=0).reshape(self.b.shape)
