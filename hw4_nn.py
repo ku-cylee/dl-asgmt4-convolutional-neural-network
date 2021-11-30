@@ -49,11 +49,7 @@ class nn_convolutional_layer:
         _, wout, hout, _, _, _ = windows.shape
         reshaped_windows = windows.reshape(b, wout, hout, -1, 1)
 
-        y = np.zeros((b, cout, wout, hout))
-        for b_idx in range(b):
-            y[b_idx] = np.squeeze(reshaped_W.dot(reshaped_windows[b_idx]), axis=(1, 4))
-
-        return y + self.b
+        return np.swapaxes(np.squeeze(reshaped_W.dot(reshaped_windows), axis=(1, -1)), 0, 1) + self.b
 
     #######
     # Q2. Complete this method
