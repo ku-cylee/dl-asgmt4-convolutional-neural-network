@@ -60,7 +60,6 @@ class nn_convolutional_layer:
     #######
     def backprop(self, x, dLdy):
         cout, cin, wfil, hfil = self.W.shape
-        b, _, wout, hout = dLdy.shape
 
         # dLdW: (cout, cin, wfil, hfil)
         x_windows = np.squeeze(view_as_windows(x, (1, 1, wfil, hfil)), axis=(4, 5)) \
@@ -70,15 +69,11 @@ class nn_convolutional_layer:
         dLdW = np.squeeze(dLdy_flattened.dot(x_windows), axis=(1, -1))
 
         # dLdx: (b, cin, win = wout + wfil - 1, hin = hout + hfil - 1)
-        dLdx = np.zeros_like(x)
-        for cout_idx in range(cout):
-            filterwise_W = self.W[cout_idx]
-            for b_idx in range(b):
-                for wout_idx in range(wout):
-                    for hout_idx in range(hout):
-                        dLdy_value = dLdy[b_idx, cout_idx, wout_idx, hout_idx]
-
-                        dLdx[b_idx, :, wout_idx:wout_idx + wfil, hout_idx:hout_idx + hfil] += dLdy_value * filterwise_W
+        dLdy_padded = np.pad(dLdy, ((0, 0), (0, 0), (wfil - 1, wfil - 1), (hfil - 1, hfil - 1)), mode='constant')
+        dLdy_windows = np.squeeze(view_as_windows(dLdy_padded, (1, cout, wfil, hfil)), axis=(1, 4))
+        dLdy_flattened = dLdy_windows.reshape(dLdy_windows.shape[:3] + (1, -1))
+        W_flipped = np.swapaxes(np.flip(self.W, axis=(2, 3)), 0, 1).reshape(cin, -1, 1)
+        dLdx = np.squeeze(dLdy_flattened.dot(W_flipped), axis=(3, 5)).transpose(0, 3, 1, 2)
 
         # dLdb: (1, cout, 1, 1)
         dLdb = dLdy.sum(axis=3).sum(axis=2).sum(axis=0).reshape(self.b.shape)
