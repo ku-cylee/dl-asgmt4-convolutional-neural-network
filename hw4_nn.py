@@ -106,21 +106,22 @@ class nn_max_pooling_layer:
                                   (1, 1, self.pool_size, self.pool_size),
                                   step=(1, 1, self.stride, self.stride))
         windowed_x = np.squeeze(windows, axis=(4, 5))
-        b, cin, wout, hout, _, _ = windowed_x.shape
+
+        y = self.forward(x)
+        y_extended = y[:, :, :, :, None, None]
+        _, _, wout, hout = y.shape
 
         dLdx = np.zeros_like(x, dtype=np.float64)
-        for b_idx in range(b):
-            for cin_idx in range(cin):
-                for wout_idx in range(wout):
-                    for hout_idx in range(hout):
-                        window = windowed_x[b_idx, cin_idx, wout_idx, hout_idx]
-                        max_value = np.max(window)
-                        dLdy_value = dLdy[b_idx, cin_idx, wout_idx, hout_idx]
-                        dLdx_submatrix = np.where(window == max_value, dLdy_value, 0)
+        for wout_idx in range(wout):
+            for hout_idx in range(hout):
+                window = windowed_x[:, :, wout_idx, hout_idx]
+                max_value = y_extended[:, :, wout_idx, hout_idx]
+                dLdy_value = dLdy[:, :, wout_idx, hout_idx, None, None]
+                dLdx_submatrix = np.where(window == max_value, dLdy_value, 0)
 
-                        win_idx = wout_idx * self.stride
-                        hin_idx = hout_idx * self.stride
-                        dLdx[b_idx, cin_idx, win_idx:win_idx + self.pool_size, hin_idx:hin_idx + self.pool_size] += dLdx_submatrix
+                win_idx = wout_idx * self.stride
+                hin_idx = hout_idx * self.stride
+                dLdx[:, :, win_idx:win_idx + self.pool_size, hin_idx:hin_idx + self.pool_size] += dLdx_submatrix
 
         return dLdx
 
